@@ -17,15 +17,21 @@ library(shiny)
 
 function(input, output, session) {
   
-  # selection <- eventReactive(input$select, {
-  #   runif(input$candidate)
-  # })
-  
   output$distPlot <- renderPlot({
-    selection <- input$candidate
-    key <- selection
+    
+    selection <- input$select
+    
+    key <- isolate(input$candidate)
+    tweetFreq <- isolate(input$freq)
+    tweetMax <- isolate(input$max)
+    
     key <- enc2utf8(key)
-    result <- searchTwitteR(key, n=1000)
+    isolate({
+      withProgress({
+        setProgress(message = "Processing...")
+        result <- searchTwitteR(key, n=1000)
+      })
+    })
     
     DF <- twListToDF(result)
     m <- gregexpr("([가-힣]+ +[가-힣]+)+", DF$text)
@@ -47,13 +53,21 @@ function(input, output, session) {
     word <- subset(word, subset = (tag != "NNB"))
     
     fin <- subset(word, subset=!(word == key))
+    
+    fin <- subset(word, subset=!(word == "재인"))
+    fin <- subset(word, subset=!(word == "희정"))
+    fin <- subset(word, subset=!(word == "재명"))
+    fin <- subset(word, subset=!(word == "승민"))
+    
     f <- nchar(fin$word) == 1
     fin2 <- subset(fin, subset=!f)
     
     pal <- brewer.pal(2, "Set1")
     wordcount <- table(fin2[[1]])
     
-    wordcloud(names(wordcount), freq = wordcount, scale = c(5,1), rot.per = 0.25,
-              min.freq = 2, colors = brewer.pal(8, "Dark2"))
+    # windowsFonts(nanum=windowsFont("나눔바른고딕"))
+    # family="nanum"
+    wordcloud(names(wordcount), freq = wordcount, scale = c(20, 1),
+              min.freq = tweetFreq, max.words = tweetMax, colors = brewer.pal(8, "Dark2"))
   })
 }
